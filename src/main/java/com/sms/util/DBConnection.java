@@ -5,26 +5,35 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class DBConnection {
-    // Database connection details
-    private static final String URL = "jdbc:mysql://localhost:3306/sms";
-    private static final String USER = "root"; // Assuming default XAMPP/MySQL username
-    private static final String PASSWORD = ""; // Assuming default XAMPP/MySQL password (empty)
+
+    // Read from environment variables; fall back to local dev defaults
+    private static final String URL = System.getenv("DB_URL") != null
+            ? System.getenv("DB_URL")
+            : "jdbc:mysql://localhost:3306/sms?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
+
+    private static final String USER = System.getenv("DB_USER") != null
+            ? System.getenv("DB_USER")
+            : "root";
+
+    private static final String PASSWORD = System.getenv("DB_PASSWORD") != null
+            ? System.getenv("DB_PASSWORD")
+            : "";
 
     /**
      * Establishes and returns a database connection.
-     * @return Connection object
+     * Credentials are pulled from environment variables (DB_URL, DB_USER, DB_PASSWORD).
+     * Falls back to localhost defaults for local development.
+     *
+     * @return Connection object, or null if connection fails
      */
     public static Connection getConnection() {
         Connection connection = null;
         try {
-            // Load MySQL JDBC driver
             Class.forName("com.mysql.cj.jdbc.Driver");
-            
-            // Get connection
             connection = DriverManager.getConnection(URL, USER, PASSWORD);
         } catch (ClassNotFoundException | SQLException e) {
             e.printStackTrace();
-            System.out.println("Database Connection Failed: " + e.getMessage());
+            System.err.println("[DBConnection] Connection failed: " + e.getMessage());
         }
         return connection;
     }

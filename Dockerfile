@@ -11,7 +11,7 @@ COPY src ./src
 RUN mvn clean package -DskipTests -B
 
 # ─── Stage 2: Deploy to Tomcat ───────────────────────────────────────────────
-FROM tomcat:9.0-jdk11-openjdk-slim
+FROM tomcat:9.0-jdk11-temurin
 
 # Remove the default ROOT webapp
 RUN rm -rf /usr/local/tomcat/webapps/*
@@ -20,9 +20,15 @@ RUN rm -rf /usr/local/tomcat/webapps/*
 COPY --from=build /app/target/StudentManagementSystem.war \
      /usr/local/tomcat/webapps/ROOT.war
 
-# Railway / cloud platforms inject the PORT env var
+# Railway injects PORT env var at runtime; default to 8080
 ENV PORT=8080
 EXPOSE 8080
 
-# Start Tomcat
-CMD ["catalina.sh", "run"]
+# Write a startup script that patches Tomcat's port at runtime then launches it
+RUN printf '#!/bin/sh\n\
+PORT="${PORT:-8080}"\n\
+echo "Starting Tomcat on port $PORT"\n\
+sed -i "s/port=\\"8080\\"/port=\\"${PORT}\\"/" /usr/local/tomcat/conf/server.xml\n\
+exec catalina.sh run\n' > /start.sh && chmod +x /start.sh
+
+CMD ["/start.sh"]
